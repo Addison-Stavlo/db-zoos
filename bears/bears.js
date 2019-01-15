@@ -27,15 +27,15 @@ function checkBody(req,res,next) {
   }
 
   //endpoints
-  router.get('/', (req, res) => {
+  router.get('/', (req, res, next) => {
     db('bears')
       .then(bears => {
         res.status(200).json(bears)
       })
-      .catch(err => res.status(500).json(err));
+      .catch(err => next(err) )
   });
   
-  router.get('/:id', (req, res) => {
+  router.get('/:id', (req, res, next) => {
     db('bears').where({id: req.params.id})
       .then(bear => {
         if(bear.length){
@@ -45,10 +45,10 @@ function checkBody(req,res,next) {
           res.status(404).json({message: 'bear not found...'})
         }
       })
-      .catch(err=>res.status(500).json(err))
+      .catch(err => next(err) )
   });
   
-  router.post('/', checkBody, (req, res) => {
+  router.post('/', checkBody, (req, res, next) => {
     db('bears').insert(req.body)
       .then(ids => {
         db('bears').where({id: ids[0]})
@@ -56,38 +56,33 @@ function checkBody(req,res,next) {
             res.status(201).json({message: `item added successfully`, item: bear})
           })
       })
-      .catch(err => {
-        if(err.errno == 19){
-          res.status(500).json({message: `name already used`})
-        }
-        else {
-          res.status(500).json(err) 
-        }    
-      })
+      .catch(err => next(err) )
   });
   
-  router.put('/:id', checkBody, checkID, (req,res) => {
+  router.put('/:id', checkBody, checkID, (req,res,next) => {
     db('bears').where({id: req.params.id}).update(req.body)
       .then(count => {
         db('bears').where({id: req.params.id})
           .then(bear => res.status(200).json({message: `successfully updated item`, item: bear}))
       })
-      .catch(err => {
-        if(err.errno == 19){
-          res.status(500).json({message: `name already used`})
-        }
-        else {
-          res.status(500).json(err) 
-        }    
-      })
+      .catch(err => next(err) )
   })
   
-  router.delete('/:id', checkID, (req,res) => {
+  router.delete('/:id', checkID, (req,res,next) => {
     db('bears').where({id: req.params.id}).del()
       .then(count => {
         res.status(200).json({message: `successfully deleted bear of id ${req.params.id}`})
       })
-      .catch(err => res.status(500).json(err) )
+      .catch(err => next(err) )
   })
+  //error handler
+  router.use( (err,req,res,next) => {
+    if(err.errno == 19){
+        res.status(500).json({message: `name already used`})
+      }
+      else {
+        res.status(500).json(err) 
+      }    
+  });
 
   module.exports = router;
